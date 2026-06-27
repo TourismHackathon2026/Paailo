@@ -1,0 +1,1 @@
+export { FestivalSection } from "../../src/components/sections/FestivalSection";

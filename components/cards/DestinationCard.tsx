@@ -1,0 +1,1 @@
+export { DestinationCard } from "../../src/components/cards/DestinationCard";

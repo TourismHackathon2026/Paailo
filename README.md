@@ -1,5 +1,9 @@
-<div align="center">
 
+  # Tourism App Homepage Design
+
+  This is a code bundle for Tourism App Homepage Design. The original project is available at https://www.figma.com/design/5dQb0dWKbvRqlOfUZwwUG1/Tourism-App-Homepage-Design.
+
+  ## Running the code
 # 🥾 Paaila (पाइला)
 ### *Your First Step Into Nepal*
 
@@ -7,8 +11,10 @@
 
 *Built with ❤️ by **Team Pahilo** for the Government Tourism Hackathon 2026 🇳🇵*
 
----
+  Run `npm i` to install the dependencies.
 
+  Run `npm run dev` to start the development server.
+  
 [![Hackathon](https://img.shields.io/badge/Hackathon-Tourism%202026-blue?style=for-the-badge)]()
 [![Status](https://img.shields.io/badge/Status-In%20Development-yellow?style=for-the-badge)]()
 [![Built For](https://img.shields.io/badge/Built%20For-Nepal%20Tourism-red?style=for-the-badge)]()

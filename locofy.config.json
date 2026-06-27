@@ -1,0 +1,28 @@
+{
+  "components": [],
+  "projectId": "3FiSwmwUZwi3uw7EH0VrXEsrEin",
+  "projectName": "Paailo",
+  "framework": "react",
+  "teamId": "3FiSSid7DpDqDZzSWzoHJBTuLuL",
+  "settings": {
+    "units": {
+      "unit": "px",
+      "topRightBottomLeft": true,
+      "widthHeight": true,
+      "margin": true,
+      "padding": true,
+      "gap": true,
+      "fontSize": true,
+      "lineHeight": true,
+      "baseFontSize": 16
+    },
+    "designTokens": true,
+    "generateFigmaTokens": true,
+    "tailwindGenerateTokens": true,
+    "styling": "Tailwind",
+    "fileNamingConvention": "Pascal Case",
+    "typescript": true,
+    "vite": false,
+    "reactVersion": "19"
+  }
+}
