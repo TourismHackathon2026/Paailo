@@ -29,21 +29,87 @@ ALTER TABLE translations ENABLE ROW LEVEL SECURITY;
 -- ============================================================
 -- PUBLIC READ: Anyone can read reference/content data
 -- ============================================================
-CREATE POLICY "Public read regions"        ON regions            FOR SELECT USING (true);
-CREATE POLICY "Public read districts"      ON districts          FOR SELECT USING (true);
-CREATE POLICY "Public read categories"     ON categories         FOR SELECT USING (true);
-CREATE POLICY "Public read places"         ON places             FOR SELECT USING (is_active = true);
 CREATE POLICY "Public read hotel_details"  ON hotel_details      FOR SELECT USING (true);
 CREATE POLICY "Public read restaurant_details" ON restaurant_details FOR SELECT USING (true);
 CREATE POLICY "Public read place_hours"    ON place_hours        FOR SELECT USING (true);
-CREATE POLICY "Public read foods"          ON foods              FOR SELECT USING (true);
 CREATE POLICY "Public read restaurant_foods" ON restaurant_foods FOR SELECT USING (true);
 CREATE POLICY "Public read tags"           ON tags               FOR SELECT USING (true);
 CREATE POLICY "Public read place_tags"     ON place_tags         FOR SELECT USING (true);
 CREATE POLICY "Public read media"          ON media              FOR SELECT USING (true);
 CREATE POLICY "Public read reviews"        ON reviews            FOR SELECT USING (true);
 CREATE POLICY "Public read emergency_cat"  ON emergency_categories FOR SELECT USING (true);
-CREATE POLICY "Public read emergency_svc"  ON emergency_services FOR SELECT USING (is_active = true);
+-- Idempotent policy creation and grants for hackathon public read
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies
+        WHERE schemaname = 'public' AND tablename = 'regions' AND policyname = 'Public read regions'
+    ) THEN
+        EXECUTE 'CREATE POLICY "Public read regions" ON public.regions FOR SELECT USING (true)';
+    END IF;
+    GRANT SELECT ON public.regions TO public;
+END
+$$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies
+        WHERE schemaname = 'public' AND tablename = 'districts' AND policyname = 'Public read districts'
+    ) THEN
+        EXECUTE 'CREATE POLICY "Public read districts" ON public.districts FOR SELECT USING (true)';
+    END IF;
+    GRANT SELECT ON public.districts TO public;
+END
+$$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies
+        WHERE schemaname = 'public' AND tablename = 'categories' AND policyname = 'Public read categories'
+    ) THEN
+        EXECUTE 'CREATE POLICY "Public read categories" ON public.categories FOR SELECT USING (true)';
+    END IF;
+    GRANT SELECT ON public.categories TO public;
+END
+$$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies
+        WHERE schemaname = 'public' AND tablename = 'places' AND policyname = 'Public read places'
+    ) THEN
+        EXECUTE 'CREATE POLICY "Public read places" ON public.places FOR SELECT USING (is_active = true)';
+    END IF;
+    GRANT SELECT ON public.places TO public;
+END
+$$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies
+        WHERE schemaname = 'public' AND tablename = 'foods' AND policyname = 'Public read foods'
+    ) THEN
+        EXECUTE 'CREATE POLICY "Public read foods" ON public.foods FOR SELECT USING (true)';
+    END IF;
+    GRANT SELECT ON public.foods TO public;
+END
+$$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_policies
+        WHERE schemaname = 'public' AND tablename = 'emergency_services' AND policyname = 'Public read emergency_svc'
+    ) THEN
+        EXECUTE 'CREATE POLICY "Public read emergency_svc" ON public.emergency_services FOR SELECT USING (is_active = true)';
+    END IF;
+    GRANT SELECT ON public.emergency_services TO public;
+END
+$$;
 CREATE POLICY "Public read languages"      ON languages          FOR SELECT USING (is_active = true);
 CREATE POLICY "Public read translations"   ON translations       FOR SELECT USING (true);
 CREATE POLICY "Public read profiles"       ON profiles           FOR SELECT USING (true);
