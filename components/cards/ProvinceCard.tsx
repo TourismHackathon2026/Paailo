@@ -1,0 +1,1 @@
+export { ProvinceCard } from "../../src/components/cards/ProvinceCard";

@@ -1,0 +1,1 @@
+export { ImageWithFallback } from "../../src/app/components/figma/ImageWithFallback";

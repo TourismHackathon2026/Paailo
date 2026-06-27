@@ -1,0 +1,1 @@
+export { ProvinceSection } from "../../src/components/sections/ProvinceSection";

@@ -1,0 +1,1 @@
+export { PopularDestinations } from "../../src/components/sections/PopularDestinations";
