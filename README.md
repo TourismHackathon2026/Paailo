@@ -254,9 +254,9 @@ All records include verified coordinates, descriptions, and images.
 
 | Role | Responsibilities |
 |---|---|
-| **Friend 1** — Backend & Database | PostgreSQL schema, Supabase setup, REST APIs |
-| **Friend 2** — Product & QA | Research, data curation, QA, presentation |
-| **Friend 3** — Frontend | Next.js UI, interactive map, frontend integration |
+| **Darshana Ghodasaini** — Backend & Database | PostgreSQL schema, Supabase setup, REST APIs |
+| **Sayudh Pangeni** — Product & QA | Research, data curation, QA, presentation |
+| **Monika Kandel** — Frontend | Next.js UI, interactive map, frontend integration |
 
 ---
 
