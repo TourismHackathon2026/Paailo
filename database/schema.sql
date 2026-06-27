@@ -24,21 +24,16 @@ $$ LANGUAGE plpgsql;
 -- ============================================================
 -- 1. PROFILES (extends Supabase auth.users)
 -- ============================================================
-CREATE TABLE profiles (
-    id          UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-    display_name TEXT,
-    avatar_url  TEXT,
-    nationality TEXT,
-    preferred_language TEXT DEFAULT 'en',
-    created_at  TIMESTAMPTZ DEFAULT now() NOT NULL,
-    updated_at  TIMESTAMPTZ DEFAULT now() NOT NULL
+CREATE TABLE IF NOT EXISTS profiles (
+    id                      UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    display_name            TEXT,
+    avatar_url              TEXT,
+    nationality             TEXT,
+    preferred_language      TEXT DEFAULT 'en',
+    created_at              TIMESTAMPTZ DEFAULT now() NOT NULL,
+    updated_at              TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 
-CREATE TRIGGER trg_profiles_updated_at
-    BEFORE UPDATE ON profiles
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
--- Auto-create profile on signup
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -52,6 +47,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+DROP TRIGGER IF EXISTS trg_profiles_updated_at ON profiles;
+CREATE TRIGGER trg_profiles_updated_at
+    BEFORE UPDATE ON profiles
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE FUNCTION handle_new_user();
@@ -59,7 +60,7 @@ CREATE TRIGGER on_auth_user_created
 -- ============================================================
 -- 2. REGIONS (Provinces of Nepal)
 -- ============================================================
-CREATE TABLE regions (
+CREATE TABLE IF NOT EXISTS regions (
     id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name        TEXT NOT NULL UNIQUE,
     slug        TEXT NOT NULL UNIQUE,
@@ -67,12 +68,12 @@ CREATE TABLE regions (
     created_at  TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 
-CREATE INDEX idx_regions_slug ON regions(slug);
+CREATE INDEX IF NOT EXISTS idx_regions_slug ON regions(slug);
 
 -- ============================================================
 -- 3. DISTRICTS
 -- ============================================================
-CREATE TABLE districts (
+CREATE TABLE IF NOT EXISTS districts (
     id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     region_id   UUID NOT NULL REFERENCES regions(id) ON DELETE RESTRICT,
     name        TEXT NOT NULL,
@@ -81,13 +82,13 @@ CREATE TABLE districts (
     UNIQUE (region_id, name)
 );
 
-CREATE INDEX idx_districts_region_id ON districts(region_id);
-CREATE INDEX idx_districts_slug ON districts(slug);
+CREATE INDEX IF NOT EXISTS idx_districts_region_id ON districts(region_id);
+CREATE INDEX IF NOT EXISTS idx_districts_slug ON districts(slug);
 
 -- ============================================================
 -- 4. CATEGORIES
 -- ============================================================
-CREATE TABLE categories (
+CREATE TABLE IF NOT EXISTS categories (
     id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name          TEXT NOT NULL UNIQUE,
     slug          TEXT NOT NULL UNIQUE,
@@ -99,7 +100,7 @@ CREATE TABLE categories (
 -- ============================================================
 -- 5. PLACES (unified: attractions, hotels, restaurants)
 -- ============================================================
-CREATE TABLE places (
+CREATE TABLE IF NOT EXISTS places (
     id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     category_id     UUID NOT NULL REFERENCES categories(id) ON DELETE RESTRICT,
     district_id     UUID NOT NULL REFERENCES districts(id) ON DELETE RESTRICT,
@@ -124,14 +125,15 @@ CREATE TABLE places (
     updated_at      TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 
-CREATE INDEX idx_places_category_id ON places(category_id);
-CREATE INDEX idx_places_district_id ON places(district_id);
-CREATE INDEX idx_places_slug ON places(slug);
-CREATE INDEX idx_places_location ON places USING GIST(location);
-CREATE INDEX idx_places_avg_rating ON places(avg_rating DESC);
-CREATE INDEX idx_places_active ON places(is_active) WHERE is_active = TRUE;
-CREATE INDEX idx_places_metadata ON places USING GIN(metadata);
+CREATE INDEX IF NOT EXISTS idx_places_category_id ON places(category_id);
+CREATE INDEX IF NOT EXISTS idx_places_district_id ON places(district_id);
+CREATE INDEX IF NOT EXISTS idx_places_slug ON places(slug);
+CREATE INDEX IF NOT EXISTS idx_places_location ON places USING GIST(location);
+CREATE INDEX IF NOT EXISTS idx_places_avg_rating ON places(avg_rating DESC);
+CREATE INDEX IF NOT EXISTS idx_places_active ON places(is_active) WHERE is_active = TRUE;
+CREATE INDEX IF NOT EXISTS idx_places_metadata ON places USING GIN(metadata);
 
+DROP TRIGGER IF EXISTS trg_places_updated_at ON places;
 CREATE TRIGGER trg_places_updated_at
     BEFORE UPDATE ON places
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
@@ -147,6 +149,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_places_sync_location ON places;
 CREATE TRIGGER trg_places_sync_location
     BEFORE INSERT OR UPDATE OF latitude, longitude ON places
     FOR EACH ROW EXECUTE FUNCTION sync_place_location();
@@ -154,7 +157,7 @@ CREATE TRIGGER trg_places_sync_location
 -- ============================================================
 -- 6. HOTEL_DETAILS
 -- ============================================================
-CREATE TABLE hotel_details (
+CREATE TABLE IF NOT EXISTS hotel_details (
     place_id            UUID PRIMARY KEY REFERENCES places(id) ON DELETE CASCADE,
     hotel_type          TEXT NOT NULL CHECK (hotel_type IN ('hotel','homestay','resort','lodge','guesthouse')),
     star_rating         SMALLINT CHECK (star_rating BETWEEN 1 AND 5),
@@ -171,6 +174,7 @@ CREATE TABLE hotel_details (
     CHECK (price_per_night_max >= price_per_night_min)
 );
 
+DROP TRIGGER IF EXISTS trg_hotel_details_updated_at ON hotel_details;
 CREATE TRIGGER trg_hotel_details_updated_at
     BEFORE UPDATE ON hotel_details
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
@@ -178,7 +182,7 @@ CREATE TRIGGER trg_hotel_details_updated_at
 -- ============================================================
 -- 7. RESTAURANT_DETAILS
 -- ============================================================
-CREATE TABLE restaurant_details (
+CREATE TABLE IF NOT EXISTS restaurant_details (
     place_id        UUID PRIMARY KEY REFERENCES places(id) ON DELETE CASCADE,
     cuisine_types   TEXT[] DEFAULT '{}',
     dietary_options TEXT[] DEFAULT '{}',
@@ -186,12 +190,13 @@ CREATE TABLE restaurant_details (
     currency        TEXT DEFAULT 'NPR',
     has_delivery    BOOLEAN DEFAULT FALSE,
     has_dine_in     BOOLEAN DEFAULT TRUE,
-    has_takeout     BOOLEAN DEFAULT FALSE,
+    has_takeout      BOOLEAN DEFAULT FALSE,
     reservation_url TEXT,
     created_at      TIMESTAMPTZ DEFAULT now() NOT NULL,
     updated_at      TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 
+DROP TRIGGER IF EXISTS trg_restaurant_details_updated_at ON restaurant_details;
 CREATE TRIGGER trg_restaurant_details_updated_at
     BEFORE UPDATE ON restaurant_details
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
@@ -199,7 +204,7 @@ CREATE TRIGGER trg_restaurant_details_updated_at
 -- ============================================================
 -- 8. PLACE_HOURS
 -- ============================================================
-CREATE TABLE place_hours (
+CREATE TABLE IF NOT EXISTS place_hours (
     id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     place_id    UUID NOT NULL REFERENCES places(id) ON DELETE CASCADE,
     day_of_week SMALLINT NOT NULL CHECK (day_of_week BETWEEN 0 AND 6),
@@ -209,12 +214,12 @@ CREATE TABLE place_hours (
     UNIQUE (place_id, day_of_week)
 );
 
-CREATE INDEX idx_place_hours_place_id ON place_hours(place_id);
+CREATE INDEX IF NOT EXISTS idx_place_hours_place_id ON place_hours(place_id);
 
 -- ============================================================
 -- 9. FOODS
 -- ============================================================
-CREATE TABLE foods (
+CREATE TABLE IF NOT EXISTS foods (
     id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name              TEXT NOT NULL UNIQUE,
     slug              TEXT NOT NULL UNIQUE,
@@ -226,12 +231,12 @@ CREATE TABLE foods (
     created_at        TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 
-CREATE INDEX idx_foods_slug ON foods(slug);
+CREATE INDEX IF NOT EXISTS idx_foods_slug ON foods(slug);
 
 -- ============================================================
 -- 10. RESTAURANT_FOODS (junction)
 -- ============================================================
-CREATE TABLE restaurant_foods (
+CREATE TABLE IF NOT EXISTS restaurant_foods (
     place_id    UUID NOT NULL REFERENCES places(id) ON DELETE CASCADE,
     food_id     UUID NOT NULL REFERENCES foods(id) ON DELETE CASCADE,
     price       NUMERIC(10,2),
@@ -239,12 +244,12 @@ CREATE TABLE restaurant_foods (
     PRIMARY KEY (place_id, food_id)
 );
 
-CREATE INDEX idx_restaurant_foods_food_id ON restaurant_foods(food_id);
+CREATE INDEX IF NOT EXISTS idx_restaurant_foods_food_id ON restaurant_foods(food_id);
 
 -- ============================================================
 -- 11. TAGS
 -- ============================================================
-CREATE TABLE tags (
+CREATE TABLE IF NOT EXISTS tags (
     id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name       TEXT NOT NULL UNIQUE,
     slug       TEXT NOT NULL UNIQUE,
@@ -254,18 +259,18 @@ CREATE TABLE tags (
 -- ============================================================
 -- 12. PLACE_TAGS (junction)
 -- ============================================================
-CREATE TABLE place_tags (
+CREATE TABLE IF NOT EXISTS place_tags (
     place_id UUID NOT NULL REFERENCES places(id) ON DELETE CASCADE,
     tag_id   UUID NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
     PRIMARY KEY (place_id, tag_id)
 );
 
-CREATE INDEX idx_place_tags_tag_id ON place_tags(tag_id);
+CREATE INDEX IF NOT EXISTS idx_place_tags_tag_id ON place_tags(tag_id);
 
 -- ============================================================
 -- 13. MEDIA
 -- ============================================================
-CREATE TABLE media (
+CREATE TABLE IF NOT EXISTS media (
     id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     place_id      UUID REFERENCES places(id) ON DELETE CASCADE,
     food_id       UUID REFERENCES foods(id) ON DELETE CASCADE,
@@ -278,13 +283,13 @@ CREATE TABLE media (
     CHECK (num_nonnulls(place_id, food_id) = 1)
 );
 
-CREATE INDEX idx_media_place_id ON media(place_id) WHERE place_id IS NOT NULL;
-CREATE INDEX idx_media_food_id ON media(food_id) WHERE food_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_media_place_id ON media(place_id) WHERE place_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_media_food_id ON media(food_id) WHERE food_id IS NOT NULL;
 
 -- ============================================================
 -- 14. REVIEWS
 -- ============================================================
-CREATE TABLE reviews (
+CREATE TABLE IF NOT EXISTS reviews (
     id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     place_id   UUID NOT NULL REFERENCES places(id) ON DELETE CASCADE,
     user_id    UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
@@ -298,10 +303,11 @@ CREATE TABLE reviews (
     UNIQUE (place_id, user_id)
 );
 
-CREATE INDEX idx_reviews_place_id ON reviews(place_id);
-CREATE INDEX idx_reviews_user_id ON reviews(user_id);
-CREATE INDEX idx_reviews_rating ON reviews(place_id, rating);
+CREATE INDEX IF NOT EXISTS idx_reviews_place_id ON reviews(place_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_user_id ON reviews(user_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_rating ON reviews(place_id, rating);
 
+DROP TRIGGER IF EXISTS trg_reviews_updated_at ON reviews;
 CREATE TRIGGER trg_reviews_updated_at
     BEFORE UPDATE ON reviews
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
@@ -321,6 +327,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_refresh_place_rating ON reviews;
 CREATE TRIGGER trg_refresh_place_rating
     AFTER INSERT OR UPDATE OR DELETE ON reviews
     FOR EACH ROW EXECUTE FUNCTION refresh_place_rating();
@@ -328,7 +335,7 @@ CREATE TRIGGER trg_refresh_place_rating
 -- ============================================================
 -- 15. FAVORITES
 -- ============================================================
-CREATE TABLE favorites (
+CREATE TABLE IF NOT EXISTS favorites (
     id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id    UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     place_id   UUID NOT NULL REFERENCES places(id) ON DELETE CASCADE,
@@ -336,13 +343,13 @@ CREATE TABLE favorites (
     UNIQUE (user_id, place_id)
 );
 
-CREATE INDEX idx_favorites_user_id ON favorites(user_id);
-CREATE INDEX idx_favorites_place_id ON favorites(place_id);
+CREATE INDEX IF NOT EXISTS idx_favorites_user_id ON favorites(user_id);
+CREATE INDEX IF NOT EXISTS idx_favorites_place_id ON favorites(place_id);
 
 -- ============================================================
 -- 16. ITINERARIES
 -- ============================================================
-CREATE TABLE itineraries (
+CREATE TABLE IF NOT EXISTS itineraries (
     id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id      UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     title        TEXT NOT NULL,
@@ -362,9 +369,10 @@ CREATE TABLE itineraries (
     CHECK (end_date IS NULL OR start_date IS NULL OR end_date >= start_date)
 );
 
-CREATE INDEX idx_itineraries_user_id ON itineraries(user_id);
-CREATE INDEX idx_itineraries_status ON itineraries(status);
+CREATE INDEX IF NOT EXISTS idx_itineraries_user_id ON itineraries(user_id);
+CREATE INDEX IF NOT EXISTS idx_itineraries_status ON itineraries(status);
 
+DROP TRIGGER IF EXISTS trg_itineraries_updated_at ON itineraries;
 CREATE TRIGGER trg_itineraries_updated_at
     BEFORE UPDATE ON itineraries
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
@@ -372,7 +380,7 @@ CREATE TRIGGER trg_itineraries_updated_at
 -- ============================================================
 -- 17. ITINERARY_ITEMS
 -- ============================================================
-CREATE TABLE itinerary_items (
+CREATE TABLE IF NOT EXISTS itinerary_items (
     id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     itinerary_id    UUID NOT NULL REFERENCES itineraries(id) ON DELETE CASCADE,
     place_id        UUID REFERENCES places(id) ON DELETE SET NULL,
@@ -389,12 +397,12 @@ CREATE TABLE itinerary_items (
     UNIQUE (itinerary_id, day_number, position)
 );
 
-CREATE INDEX idx_itinerary_items_itinerary_id ON itinerary_items(itinerary_id);
+CREATE INDEX IF NOT EXISTS idx_itinerary_items_itinerary_id ON itinerary_items(itinerary_id);
 
 -- ============================================================
 -- 18. EMERGENCY_CATEGORIES
 -- ============================================================
-CREATE TABLE emergency_categories (
+CREATE TABLE IF NOT EXISTS emergency_categories (
     id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name          TEXT NOT NULL UNIQUE,
     icon          TEXT,
@@ -405,7 +413,7 @@ CREATE TABLE emergency_categories (
 -- ============================================================
 -- 19. EMERGENCY_SERVICES
 -- ============================================================
-CREATE TABLE emergency_services (
+CREATE TABLE IF NOT EXISTS emergency_services (
     id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     category_id   UUID NOT NULL REFERENCES emergency_categories(id) ON DELETE RESTRICT,
     district_id   UUID REFERENCES districts(id) ON DELETE SET NULL,
@@ -423,9 +431,10 @@ CREATE TABLE emergency_services (
     updated_at    TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 
-CREATE INDEX idx_emergency_services_category_id ON emergency_services(category_id);
-CREATE INDEX idx_emergency_services_district_id ON emergency_services(district_id);
+CREATE INDEX IF NOT EXISTS idx_emergency_services_category_id ON emergency_services(category_id);
+CREATE INDEX IF NOT EXISTS idx_emergency_services_district_id ON emergency_services(district_id);
 
+DROP TRIGGER IF EXISTS trg_emergency_services_updated_at ON emergency_services;
 CREATE TRIGGER trg_emergency_services_updated_at
     BEFORE UPDATE ON emergency_services
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
@@ -433,7 +442,7 @@ CREATE TRIGGER trg_emergency_services_updated_at
 -- ============================================================
 -- 20. LANGUAGES (reference table for i18n)
 -- ============================================================
-CREATE TABLE languages (
+CREATE TABLE IF NOT EXISTS languages (
     code       TEXT PRIMARY KEY,
     name       TEXT NOT NULL,
     native_name TEXT,
@@ -443,7 +452,7 @@ CREATE TABLE languages (
 -- ============================================================
 -- 21. TRANSLATIONS (future multilingual support)
 -- ============================================================
-CREATE TABLE translations (
+CREATE TABLE IF NOT EXISTS translations (
     id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     table_name    TEXT NOT NULL,
     record_id     UUID NOT NULL,
@@ -455,9 +464,10 @@ CREATE TABLE translations (
     UNIQUE (table_name, record_id, field_name, language_code)
 );
 
-CREATE INDEX idx_translations_lookup
+CREATE INDEX IF NOT EXISTS idx_translations_lookup
     ON translations(table_name, record_id, language_code);
 
+DROP TRIGGER IF EXISTS trg_translations_updated_at ON translations;
 CREATE TRIGGER trg_translations_updated_at
     BEFORE UPDATE ON translations
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
